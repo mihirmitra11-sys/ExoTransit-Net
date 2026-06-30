@@ -1,90 +1,83 @@
-# ExoTransit-Net
-Exoplanet transit detection from Kepler light curves using 1D-CNN
 # ExoTransit-Net 🪐
 
-Exoplanet transit detection from Kepler light curves 
-using 1D-CNN.
+Automated exoplanet transit detection from Kepler space 
+telescope light curves using 1D-CNN.
 
 ## Results
 
-| Model | Precision | Recall | F1 | Key change |
-|-------|-----------|--------|----|------------|
-| Baseline 1D-CNN | 0.01 | 1.00 | 0.02 | 136x class weight |
-| Improved + Augmentation | 0.03 | 0.80 | 0.05 | Aug + 15x weight |
+| Phase | Preprocessing | Precision | Recall | F1 | False Alarms |
+|-------|---------------|-----------|--------|----|--------------|
+| Baseline | Standardization + 136x weight | 0.01 | 1.00 | 0.02 | 565 |
+| Improved | Augmentation + 15x weight | 0.03 | 0.80 | 0.05 | 143 |
+| Uniform Detrend | Uniform filter + augmentation | 0.00 | 0.00 | 0.00 | 0 |
+| **SavGol Detrend** | **Savitzky-Golay + augmentation** | **0.11** | **0.20** | **0.14** | **8** |
+
+**Best result:** SavGol detrending — F1=0.143, false alarms 
+reduced 94% (565→8) compared to baseline.
 
 ## Key Finding
-Class imbalance (37 planet stars vs 5050 non-planet) 
-is the dominant challenge. Data augmentation improves 
-recall to 0.80 but precision remains low at 0.03.
+
+Preprocessing quality dominates model performance in rare 
+astronomical event detection. Savitzky-Golay detrending 
+preserves short-duration transit signals while removing slow 
+stellar variability, producing a 3× improvement in F1 over 
+augmentation alone and a 94% reduction in false alarms.
+
+Naive uniform filter detrending removes transit signals along 
+with stellar noise — demonstrating that preprocessing method 
+choice is more impactful than model architecture in this domain.
+
+## Problem Statement
+
+The Kepler dataset contains 5,087 stars with only 37 confirmed 
+exoplanet hosts (0.7%) — severe class imbalance that makes 
+standard training ineffective. A model predicting "no planet" 
+for every star achieves 99.3% accuracy while finding zero planets. 
+We use recall and F1 as primary metrics instead.
 
 ## Dataset
-Kepler labelled time series data — 5087 stars, 
-3197 flux measurements each.
+
+- **Source:** Kepler Labelled Time Series Data (Kaggle)
+- **Stars:** 5,087 training, 570 test
+- **Features:** 3,197 flux measurements per star
+- **Labels:** 1 = no planet (5,050 stars), 2 = planet (37 stars)
+- **Imbalance ratio:** 1:136
+
+## Installation
+
+```bash
+pip install numpy pandas matplotlib tensorflow scikit-learn scipy
+```
+
+## Notebooks
+
+| Notebook | Description |
+|----------|-------------|
+| `Exoplanet_detection.ipynb` | Complete pipeline — all phases |
+
+## Methodology
+
+1D-CNN with three convolutional blocks (491,073 parameters).
+Four preprocessing strategies evaluated systematically:
+1. Standardization only
+2. Class weighting (15×) + augmentation (37→407 planet examples)
+3. Uniform filter detrending (window=200)
+4. Savitzky-Golay detrending (window=201, polyorder=2)
 
 ## Future Work
-- Gaussian process detrending
-- LSTM/attention architecture
-- Cross-validation evaluation
 
-## Results
+- Phase folding to amplify transit signal periodicity
+- LSTM or attention-based architecture for periodic patterns
+- Cross-validation for more robust evaluation  
+- TESS mission data for larger positive class
 
-| Phase | Model | Preprocessing | Precision | Recall | F1 | False Alarms |
-|-------|-------|---------------|-----------|--------|----|--------------|
-| Baseline | 1D-CNN | Standardization only | 0.01 | 1.00 | 0.02 | 565 |
-| Improved | 1D-CNN + Augmentation | Standardization + 15x weight | 0.03 | 0.80 | 0.05 | 143 |
-| Detrended | 1D-CNN + Augmentation | Detrending + Standardization | 0.00 | 0.00 | 0.00 | 0 |
+## Paper
 
-**Best result:** Phase 3 — recall=0.80, finding 4 out of 5 planet stars in test set.
+See `ExoTransit_Net_Paper.pdf` for the full 3-page research paper.
 
-## Key Finding
-Class imbalance (37 planet stars vs 5050 non-planet) is the 
-dominant challenge. Aggressive class weighting (136x) causes 
-the model to predict everything as planet. Moderate weighting 
-(15x) with augmentation achieves recall=0.80 but precision=0.03.
-Naive uniform filter detrending removes transit signals along 
-with stellar noise, reducing performance to zero.
+## References
 
-## What This Means
-Proper exoplanet detection requires sophisticated preprocessing 
-(Gaussian Process regression, Savitzky-Golay filtering) rather 
-than simple smoothing. This motivates future work on 
-domain-specific preprocessing pipelines.
-
-## Results
-
-| Phase | Model | Preprocessing | Precision | Recall | F1 | False Alarms |
-|-------|-------|---------------|-----------|--------|----|--------------|
-| Baseline | 1D-CNN | Standardization only | 0.01 | 1.00 | 0.02 | 565 |
-| Improved | 1D-CNN + Augmentation | Standardization + 15x weight | 0.03 | 0.80 | 0.05 | 143 |
-| Uniform Detrend | 1D-CNN + Augmentation | Uniform filter detrending | 0.00 | 0.00 | 0.00 | 0 |
-| SavGol Detrend | 1D-CNN + Augmentation | Savitzky-Golay detrending | 0.11 | 0.20 | 0.14 | 8 |
-
-**Best result:** Phase 4b — F1=0.143, false alarms reduced 
-from 565 to just 8.
-
-## Key Findings
-- Class imbalance (37 planet stars vs 5050 non-planet) 
-  is the dominant challenge in exoplanet detection
-- Aggressive class weighting (136x) causes the model to 
-  predict everything as planet — reduces to 15x
-- Naive uniform filter detrending removes transit signals 
-  along with stellar noise — F1 drops to 0
-- Savitzky-Golay detrending preserves transit signals 
-  while removing stellar trends — F1 improves 3x to 0.143
-- Preprocessing quality dominates model performance in 
-  rare event detection tasks
-
-## What This Means
-With only 37 positive examples, even after augmentation 
-to 481, exoplanet detection remains extremely challenging. 
-Proper domain-specific preprocessing (SavGol vs uniform 
-filter) produces a 3x improvement in F1 score and 94% 
-reduction in false alarms, highlighting the critical 
-importance of signal processing before ML model training.
-
-## Future Work
-- Longer window SavGol filtering for better trend removal
-- LSTM or attention-based architecture for periodic 
-  pattern detection
-- Cross-validation for more robust evaluation
-- Fold-and-bin phase folding to amplify transit signal
+- Shallue & Vanderburg (2018). Identifying Exoplanets with 
+  Deep Learning. *The Astronomical Journal*, 155(2), 94.
+- Borucki et al. (2010). Kepler Planet-Detection Mission. 
+  *Science*, 327(5968), 977-980.
